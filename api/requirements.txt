@@ -1,0 +1,11 @@
+# API server dependencies — no torch/transformers here; the API layer never
+# runs inference directly, it only dispatches to the worker via Celery.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+celery>=5.3
+redis>=5.0
+boto3>=1.34
+httpx>=0.27

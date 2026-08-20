@@ -1,0 +1,41 @@
+# Local dev only. Production: managed Postgres + managed Redis + this api
+# service on a small always-on host, and the worker replaced by RunPod
+# Serverless / Modal per Phase 5 (autoscale 0 -> N GPU instances on demand
+# rather than paying for idle GPU time).
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: motion_artwork
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file: .env
+    depends_on: [postgres, redis]
+    ports: ["8000:8000"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: generation/Dockerfile
+    env_file: .env
+    depends_on: [postgres, redis]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -1,0 +1,59 @@
+[devserver] full_res=False dims=((480, 480), (480, 640)) listening on http://127.0.0.1:9000
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:9000
+Press CTRL+C to quit
+127.0.0.1 - - [20/Aug/2026 09:48:27] "GET /v1/health HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:27] "POST /v1/motion-artwork/jobs HTTP/1.1" 202 -
+127.0.0.1 - - [20/Aug/2026 09:48:27] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:27] "GET /test-assets/cover.png HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:28] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:29] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:30] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:31] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:32] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:33] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:34] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "GET /v1/motion-artwork/jobs/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "GET /v1/motion-artwork/assets/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8/square_1x1.mp4 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "GET /test-assets/cover.png HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "POST /v1/motion-artwork/jobs/batch HTTP/1.1" 202 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:35] "GET /test-assets/cover.png HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:36] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:37] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:38] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:39] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:40] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:41] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:42] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:43] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:44] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:45] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:46] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:47] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:48] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:49] "GET /v1/motion-artwork/jobs/1c94ba4e-4afa-46bd-9b1b-b542076f0953 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:49] "GET /v1/motion-artwork/jobs/3318a321-de4c-4291-b698-152d6dd35a2b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:49] "POST /v1/motion-artwork/qc HTTP/1.1" 202 -
+127.0.0.1 - - [20/Aug/2026 09:48:49] "GET /v1/motion-artwork/assets/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8/square_1x1.mp4 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:49] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:50] "GET /v1/motion-artwork/assets/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8/vertical_3x4.mp4 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:50] "GET /test-assets/cover.png HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:51] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:52] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:53] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:54] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "GET /v1/motion-artwork/jobs/137eb64e-748d-42ad-981f-1208063f7fbe HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "POST /v1/motion-artwork/qc HTTP/1.1" 202 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "GET /v1/motion-artwork/assets/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8/square_1x1_BROKEN.mp4 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "GET /v1/motion-artwork/assets/d3b962ab-1cdf-4487-a1ba-90fa9d3498c8/vertical_3x4.mp4 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:55] "GET /test-assets/cover.png HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:56] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:57] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:58] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:48:59] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:49:00] "GET /v1/motion-artwork/jobs/818d512d-d71d-41ec-a03a-44fe8f74e06b HTTP/1.1" 200 -
+127.0.0.1 - - [20/Aug/2026 09:49:00] "POST /v1/motion-artwork/jobs HTTP/1.1" 401 -

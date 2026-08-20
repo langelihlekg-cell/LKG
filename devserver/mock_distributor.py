@@ -1,0 +1,49 @@
+"""
+Stands in for a distributor's webhook receiver so the full delivery loop —
+including HMAC signature verification — can be exercised for real, not just
+asserted in code. Run standalone: python3 devserver/mock_distributor.py [port]
+"""
+import sys
+import json
+from flask import Flask, request, jsonify
+
+sys.path.insert(0, __file__.rsplit("/", 1)[0])
+from webhook_utils import verify_signature
+
+app = Flask(__name__)
+RECEIVED = []
+WEBHOOK_SECRET = None  # set via /configure before use
+
+
+@app.post("/configure")
+def configure():
+    global WEBHOOK_SECRET
+    WEBHOOK_SECRET = request.json["webhook_secret"]
+    return jsonify({"ok": True})
+
+
+@app.post("/webhook")
+def webhook():
+    body = request.get_data()
+    sig = request.headers.get("X-Motion-Artwork-Signature", "")
+    valid = verify_signature(body, WEBHOOK_SECRET or "", sig) if WEBHOOK_SECRET else False
+    payload = request.get_json()
+    RECEIVED.append({"payload": payload, "signature_valid": valid, "signature_header": sig})
+    print(f"[mock_distributor] received {payload.get('event')} for job {payload.get('job_id')} "
+          f"(signature_valid={valid})", flush=True)
+    return jsonify({"ok": True}), 200
+
+
+@app.get("/received")
+def received():
+    return jsonify(RECEIVED)
+
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+if __name__ == "__main__":
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 9001
+    app.run(host="127.0.0.1", port=port, threaded=True)

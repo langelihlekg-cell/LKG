@@ -1,0 +1,14 @@
+# Worker/generation dependencies — heavy, GPU-oriented. Keep separate from
+# api/requirements.txt so the API server image stays small and fast to deploy.
+torch>=2.2
+transformers>=4.40
+opencv-python-headless>=4.9
+numpy>=1.26
+scipy>=1.12
+pillow>=10.2
+boto3>=1.34
+httpx>=0.27
+celery>=5.3
+redis>=5.0
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
