@@ -153,15 +153,7 @@ Open a **second terminal** (click the `+` in the terminal panel) and make
 yourself a login key:
 ```bash
 source venv/bin/activate
-python3 -c "
-import sys; sys.path.insert(0, 'devserver')
-import db, uuid, hashlib
-db.init_db(fresh=False)
-org = db.create_org('My Org')
-key = uuid.uuid4().hex
-db.create_api_key(org['id'], hashlib.sha256(key.encode()).hexdigest())
-print('KEY:', key)
-"
+python3 devserver/seed_dev_key.py
 ```
 Copy the key it prints.
 
