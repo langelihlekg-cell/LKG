@@ -145,8 +145,9 @@ Start the real server:
 python3 devserver/app.py 9000
 ```
 Leave it running. A little popup will appear ("Your application running on
-port 9000 is available") — click **Open in Browser**. That opens the live
-server in a new tab.
+port 9000 is available") — click **Open in Browser**. That opens a page
+confirming the server's up (if you land on a bare "404 not found" instead,
+you're on an older copy of the code — re-download the zip).
 
 Open a **second terminal** (click the `+` in the terminal panel) and make
 yourself a login key:

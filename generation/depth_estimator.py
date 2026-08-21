@@ -31,8 +31,14 @@ class DepthEstimator:
 class ClassicalDepthEstimator(DepthEstimator):
     """
     CPU stand-in using:
-      1. Spectral-residual saliency (Hou & Zhang, 2007, via cv2.saliency) —
-         a real, published foreground-detection algorithm, not a made-up heuristic.
+      1. Spectral-residual saliency (Hou & Zhang, 2007) — implemented directly
+         with numpy's FFT below, NOT via cv2.saliency. That module only ships
+         in opencv-contrib-python(-headless), not the plain opencv-python-
+         headless this repo's requirements install — a real packaging gap
+         that only worked in the original build sandbox because a contrib
+         build happened to already be present there, which is exactly the
+         "works on my machine" failure mode this rewrite removes. Same
+         published algorithm, zero non-standard dependency.
       2. A mild center-weighted prior, since cover art conventionally frames
          the subject centrally.
       3. Local contrast (Laplacian energy) as a secondary "in-focus = close" cue.
@@ -43,18 +49,39 @@ class ClassicalDepthEstimator(DepthEstimator):
         self.saliency_weight = saliency_weight
         self.center_weight = center_weight
         self.contrast_weight = contrast_weight
-        self._saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
+
+    @staticmethod
+    def _spectral_residual_saliency(gray: np.ndarray, work_size: int = 64) -> np.ndarray:
+        """Hou & Zhang 2007, from scratch: FFT -> log amplitude -> subtract a
+        locally-smoothed version of itself (the 'residual') -> reconstruct
+        with the original phase -> square -> smooth. Downscaling to a small
+        fixed size first is standard for this algorithm (cheaper, and the
+        method is intentionally low-resolution/coarse by design)."""
+        h, w = gray.shape
+        small = cv2.resize(gray, (work_size, work_size), interpolation=cv2.INTER_AREA).astype(np.float64)
+
+        f = np.fft.fft2(small)
+        amplitude = np.abs(f)
+        phase = np.angle(f)
+        log_amp = np.log(amplitude + 1e-8)
+        avg_log_amp = cv2.blur(log_amp, (3, 3))
+        residual = log_amp - avg_log_amp
+
+        reconstructed = np.fft.ifft2(np.exp(residual + 1j * phase))
+        sal_small = np.abs(reconstructed) ** 2
+        sal_small = cv2.GaussianBlur(sal_small.astype(np.float32), (0, 0), sigmaX=2.0)
+
+        sal = cv2.resize(sal_small, (w, h), interpolation=cv2.INTER_LINEAR)
+        sal = (sal - sal.min()) / (sal.max() - sal.min() + 1e-8)
+        return sal.astype(np.float32)
 
     def estimate(self, image_rgb: np.ndarray) -> np.ndarray:
         h, w = image_rgb.shape[:2]
         bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
         # 1. Saliency map
-        success, sal = self._saliency.computeSaliency(bgr)
-        if not success:
-            sal = np.ones((h, w), dtype=np.float32) * 0.5
-        sal = sal.astype(np.float32)
-        sal = (sal - sal.min()) / (sal.max() - sal.min() + 1e-8)
+        sal = self._spectral_residual_saliency(gray)
 
         # 2. Center-weighted prior
         yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
@@ -63,8 +90,8 @@ class ClassicalDepthEstimator(DepthEstimator):
         center_prior = np.clip(1.0 - dist, 0, 1)
 
         # 3. Local contrast via Laplacian energy in a small window
-        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
-        lap = cv2.Laplacian(gray, cv2.CV_32F, ksize=3)
+        gray_f = gray.astype(np.float32)
+        lap = cv2.Laplacian(gray_f, cv2.CV_32F, ksize=3)
         lap_energy = cv2.GaussianBlur(np.abs(lap), (0, 0), sigmaX=max(w, h) * 0.01)
         lap_energy = (lap_energy - lap_energy.min()) / (lap_energy.max() - lap_energy.min() + 1e-8)
 

@@ -49,7 +49,7 @@ ASSETS_DIR = os.path.join(HERE, "storage")
 os.makedirs(ASSETS_DIR, exist_ok=True)
 
 app = Flask(__name__)
-work_queue: "queue.Queue[tuple[str,str]]" = queue.Queue()
+work_queue: "queue.Queue[tuple[str,str,str]]" = queue.Queue()
 
 # QC bounds that match whichever DIMS/bitrate this run is actually using —
 # in production this is just QC_CONFIG (the real Apple numbers) unmodified.
@@ -73,6 +73,31 @@ def require_org():
     if org is None:
         return None, (jsonify({"detail": "invalid or revoked API key"}), 401)
     return org, None
+
+
+# --- root -------------------------------------------------------------
+
+@app.get("/")
+def index():
+    """Codespaces/Replit's 'Open in Browser' button opens this exact path —
+    without a route here it 404s and looks like the whole server is broken,
+    when actually every OTHER route was fine. This is that missing route."""
+    return """
+    <html><head><title>Motion Artwork API — dev server</title>
+    <style>body{font-family:sans-serif;background:#111;color:#eee;padding:2rem;line-height:1.6}
+    code{background:#222;padding:2px 6px;border-radius:4px}</style></head><body>
+    <h2>It's running.</h2>
+    <p>This page itself isn't an endpoint — the API lives under
+    <code>/v1/motion-artwork/...</code>, and you talk to it with real HTTP
+    requests (curl, or your own code), not by browsing to it directly.</p>
+    <p>Two links that DO work directly in a browser:</p>
+    <ul>
+      <li><a href="/v1/health">/v1/health</a> — should show <code>{"status":"ok"}</code></li>
+      <li><code>/v1/motion-artwork/preview/&lt;job_id&gt;</code> — once you've created
+      a job and it's complete, this plays the result right here in the browser.</li>
+    </ul>
+    </body></html>
+    """
 
 
 # --- static / asset serving -------------------------------------------
@@ -104,8 +129,10 @@ def preview(job_id):
     </head><body>
     <h2>Job {job_id} — no download needed, just watch below</h2>
     <div class="row">
-      <div><p>Square (1:1)</p><video controls autoplay loop muted src="{job['square_asset_url']}"></video></div>
-      <div><p>Vertical (3:4)</p><video controls autoplay loop muted src="{job['vertical_asset_url']}"></video></div>
+      <div><p>Square (1:1)</p><video controls autoplay loop muted
+        src="/v1/motion-artwork/assets/{job_id}/{os.path.basename(job['square_asset_url'])}"></video></div>
+      <div><p>Vertical (3:4)</p><video controls autoplay loop muted
+        src="/v1/motion-artwork/assets/{job_id}/{os.path.basename(job['vertical_asset_url'])}"></video></div>
     </div>
     </body></html>
     """
@@ -142,7 +169,11 @@ def create_job():
         callback_url=body["callback_url"], metadata=body.get("metadata", {}),
         status="queued", price_usd=price,
     )
-    work_queue.put((job_id, "generate"))
+    # Captured from THIS request, not a startup-time constant — so the asset
+    # URLs the worker builds later match whatever host you actually used to
+    # reach the server (127.0.0.1 directly, or a Codespaces/Replit forwarded
+    # https://... domain), not always 127.0.0.1 regardless of context.
+    work_queue.put((job_id, "generate", request.host_url.rstrip("/")))
     return jsonify({
         "job_id": job_id, "status": "queued",
         "estimated_completion_seconds": 20, "tier": tier, "price_usd": price,
@@ -200,7 +231,7 @@ def create_batch():
             status="queued", price_usd=price,
         )
         job_ids.append(job_id)
-        work_queue.put((job_id, "generate"))
+        work_queue.put((job_id, "generate", request.host_url.rstrip("/")))
 
     return jsonify({"batch_id": batch_id, "job_ids": job_ids}), 202
 
@@ -221,7 +252,7 @@ def qc_only():
         status="queued", price_usd=QC_ONLY_PRICE_USD,
     )
     db.update_job(job_id, square_asset_url=body["square_asset_url"], vertical_asset_url=body["vertical_asset_url"])
-    work_queue.put((job_id, "qc_only"))
+    work_queue.put((job_id, "qc_only", request.host_url.rstrip("/")))
     return jsonify({"job_id": job_id, "status": "queued", "price_usd": QC_ONLY_PRICE_USD}), 202
 
 
@@ -331,9 +362,9 @@ def process_qc_only_job(job_id: str, base_url: str):
         raise
 
 
-def worker_loop(base_url: str):
+def worker_loop():
     while True:
-        job_id, kind = work_queue.get()
+        job_id, kind, base_url = work_queue.get()
         try:
             if kind == "generate":
                 process_generate_job(job_id, base_url)
@@ -345,9 +376,9 @@ def worker_loop(base_url: str):
             work_queue.task_done()
 
 
-def start_workers(base_url: str, n: int = 2):
+def start_workers(n: int = 2):
     for _ in range(n):
-        t = threading.Thread(target=worker_loop, args=(base_url,), daemon=True)
+        t = threading.Thread(target=worker_loop, daemon=True)
         t.start()
 
 
@@ -355,7 +386,7 @@ if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9000
     fresh = os.environ.get("MOTION_ARTWORK_FRESH_DB", "1") == "1"
     db.init_db(fresh=fresh)
-    base_url = f"http://127.0.0.1:{port}"
-    start_workers(base_url, n=2)
-    print(f"[devserver] full_res={USE_FULL_RES} dims={DIMS} listening on {base_url}", flush=True)
+    start_workers(n=2)
+    print(f"[devserver] full_res={USE_FULL_RES} dims={DIMS} listening on 127.0.0.1:{port} "
+          f"(asset URLs are built per-request now, not from this address)", flush=True)
     app.run(host="127.0.0.1", port=port, threaded=True)
