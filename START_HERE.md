@@ -157,26 +157,31 @@ python3 devserver/seed_dev_key.py
 ```
 Copy the key it prints.
 
-Now generate one, using the URL Codespaces gave you for port 9000 (find it
-in the **Ports** tab at the bottom of the screen — copy the address shown
-there instead of `127.0.0.1:9000` if it looks different):
+Now generate one. **Use your forwarded address here, not `127.0.0.1`** — find
+it in the **Ports** tab (it looks like `https://something-9000.app.github.dev`).
+This is the one detail that matters: whichever address you put right after
+`curl` is the address the server will use when it builds the video links it
+hands back to you — use the forwarded one and those links open directly in
+your own browser with no extra steps. (`cover_art_url` and `callback_url`
+inside the `-d '...'` part can stay as `127.0.0.1` — those are only used
+internally, by the server talking to itself.)
 ```bash
-curl -X POST http://127.0.0.1:9000/v1/motion-artwork/jobs \
+curl -X POST https://YOUR-FORWARDED-ADDRESS/v1/motion-artwork/jobs \
   -H "Authorization: Bearer PASTE_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{"release_id":"test1","cover_art_url":"http://127.0.0.1:9000/test-assets/cover.png","tier":"parametric","callback_url":"http://127.0.0.1:9000/v1/health"}'
 ```
-This prints back a `job_id`. Check on it (run this a few times, a couple
-seconds apart, until `"status"` says `complete`):
+This prints back a `job_id`. Check on it — same forwarded address — a few
+times, a couple seconds apart, until `"status"` says `complete`:
 ```bash
-curl http://127.0.0.1:9000/v1/motion-artwork/jobs/PASTE_JOB_ID -H "Authorization: Bearer PASTE_YOUR_KEY"
+curl https://YOUR-FORWARDED-ADDRESS/v1/motion-artwork/jobs/PASTE_JOB_ID -H "Authorization: Bearer PASTE_YOUR_KEY"
 ```
-Once it's complete, the response includes a `"preview_url"`. **Open that
-URL in your browser tab (via the Ports tab, same as before) — the animated
-cover just plays, right there, no download button anywhere.** That was the
+Once it's complete, the response includes a `"preview_url"` — because you
+used the forwarded address above, it's already a real, clickable
+`https://...app.github.dev` link. **Paste it into a new browser tab and the
+animated cover just plays, no download button anywhere.** That was the
 actual fix for your school-PC problem: the video was never something you
-needed to save to disk, only something you needed to *watch*, and now the
-server hands you a page built specifically to do that.
+needed to save to disk, only something you needed to *watch*.
 
 ---
 
