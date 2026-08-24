@@ -48,6 +48,18 @@ RENDER_BITRATE_MBPS = 60.0 if USE_FULL_RES else 6.0
 ASSETS_DIR = os.path.join(HERE, "storage")
 os.makedirs(ASSETS_DIR, exist_ok=True)
 
+# Auto-detecting the public-facing address from the incoming request works
+# on a plain server but NOT reliably behind Codespaces' port-forwarding
+# proxy, which was found (via a real user hitting it) to rewrite the host
+# info to "localhost" regardless of the actual forwarded address used. Set
+# this once and every returned URL uses it directly instead of guessing.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+
+
+def public_base_url() -> str:
+    return PUBLIC_BASE_URL if PUBLIC_BASE_URL else request.host_url.rstrip("/")
+
+
 app = Flask(__name__)
 work_queue: "queue.Queue[tuple[str,str,str]]" = queue.Queue()
 
@@ -173,7 +185,7 @@ def create_job():
     # URLs the worker builds later match whatever host you actually used to
     # reach the server (127.0.0.1 directly, or a Codespaces/Replit forwarded
     # https://... domain), not always 127.0.0.1 regardless of context.
-    work_queue.put((job_id, "generate", request.host_url.rstrip("/")))
+    work_queue.put((job_id, "generate", public_base_url()))
     return jsonify({
         "job_id": job_id, "status": "queued",
         "estimated_completion_seconds": 20, "tier": tier, "price_usd": price,
@@ -195,7 +207,7 @@ def get_job(job_id):
         assets = {
             "square_1x1": {"url": job["square_asset_url"]},
             "vertical_3x4": {"url": job["vertical_asset_url"]},
-            "preview_url": f"{request.host_url.rstrip('/')}/v1/motion-artwork/preview/{job_id}",
+            "preview_url": f"{public_base_url()}/v1/motion-artwork/preview/{job_id}",
         }
     return jsonify({
         "job_id": job_id, "status": job["status"],
@@ -231,7 +243,7 @@ def create_batch():
             status="queued", price_usd=price,
         )
         job_ids.append(job_id)
-        work_queue.put((job_id, "generate", request.host_url.rstrip("/")))
+        work_queue.put((job_id, "generate", public_base_url()))
 
     return jsonify({"batch_id": batch_id, "job_ids": job_ids}), 202
 
@@ -252,7 +264,7 @@ def qc_only():
         status="queued", price_usd=QC_ONLY_PRICE_USD,
     )
     db.update_job(job_id, square_asset_url=body["square_asset_url"], vertical_asset_url=body["vertical_asset_url"])
-    work_queue.put((job_id, "qc_only", request.host_url.rstrip("/")))
+    work_queue.put((job_id, "qc_only", public_base_url()))
     return jsonify({"job_id": job_id, "status": "queued", "price_usd": QC_ONLY_PRICE_USD}), 202
 
 
@@ -384,9 +396,16 @@ def start_workers(n: int = 2):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9000
-    fresh = os.environ.get("MOTION_ARTWORK_FRESH_DB", "1") == "1"
+    # Default changed to NOT wipe — a plain restart (e.g. after Ctrl+C or a
+    # Codespace reconnect) used to silently delete every org/API key you'd
+    # made, which is exactly the bug that just bit a real user: they re-ran
+    # this command to restart the server and their key stopped working with
+    # no visible cause. Pass MOTION_ARTWORK_FRESH_DB=1 explicitly on purpose
+    # if you actually want a clean slate.
+    fresh = os.environ.get("MOTION_ARTWORK_FRESH_DB", "0") == "1"
     db.init_db(fresh=fresh)
     start_workers(n=2)
     print(f"[devserver] full_res={USE_FULL_RES} dims={DIMS} listening on 127.0.0.1:{port} "
-          f"(asset URLs are built per-request now, not from this address)", flush=True)
+          f"(asset URLs are built per-request now, not from this address; "
+          f"existing data preserved across restarts unless MOTION_ARTWORK_FRESH_DB=1)", flush=True)
     app.run(host="127.0.0.1", port=port, threaded=True)

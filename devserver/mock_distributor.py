@@ -15,6 +15,18 @@ RECEIVED = []
 WEBHOOK_SECRET = None  # set via /configure before use
 
 
+@app.get("/")
+def index():
+    return """
+    <html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
+    <h3>This is the mock distributor, not the real API.</h3>
+    <p>It exists only so <code>live_demo.py</code> can test webhook delivery.
+    The actual API you want is on port <b>9000</b>, not this one.</p>
+    <p>See received webhooks: <a href="/received" style="color:#8cf">/received</a></p>
+    </body></html>
+    """
+
+
 @app.post("/configure")
 def configure():
     global WEBHOOK_SECRET

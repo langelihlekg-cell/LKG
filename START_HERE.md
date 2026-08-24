@@ -140,10 +140,21 @@ extension from the Extensions icon on the left sidebar if you want that.)
 ## Part 7: Watch it actually work, with zero downloads — this is the part
 ## that fixes your original problem
 
-Start the real server:
+First, find your Codespace's public address: click the **Ports** tab at the
+bottom, find port `9000` in the list (it'll appear once you start the
+server below), and copy the address shown — it looks like
+`https://something-9000.app.github.dev`. Right-click that same row and set
+**Port Visibility** to **Public**, so it works from a plain terminal command
+and not just a logged-in browser tab.
+
+Now start the server, telling it that address so every link it hands back
+is already correct — no manual swapping, no guessing:
 ```bash
-python3 devserver/app.py 9000
+PUBLIC_BASE_URL="https://YOUR-FORWARDED-ADDRESS" python3 devserver/app.py 9000
 ```
+(Replace `YOUR-FORWARDED-ADDRESS` with what you copied — keep the
+`https://`, drop any trailing slash.)
+
 Leave it running. A little popup will appear ("Your application running on
 port 9000 is available") — click **Open in Browser**. That opens a page
 confirming the server's up (if you land on a bare "404 not found" instead,
@@ -157,14 +168,12 @@ python3 devserver/seed_dev_key.py
 ```
 Copy the key it prints.
 
-Now generate one. **Use your forwarded address here, not `127.0.0.1`** — find
-it in the **Ports** tab (it looks like `https://something-9000.app.github.dev`).
-This is the one detail that matters: whichever address you put right after
-`curl` is the address the server will use when it builds the video links it
-hands back to you — use the forwarded one and those links open directly in
-your own browser with no extra steps. (`cover_art_url` and `callback_url`
-inside the `-d '...'` part can stay as `127.0.0.1` — those are only used
-internally, by the server talking to itself.)
+Now generate one, using your forwarded address (the one you set
+`PUBLIC_BASE_URL` to above, and set to Public) for the `curl` command
+itself — plain `127.0.0.1` won't reach a Public port correctly. (
+`cover_art_url` and `callback_url` inside the `-d '...'` part are the
+exception — leave those as `127.0.0.1`, since that's the server talking to
+itself internally, not you reaching it.)
 ```bash
 curl -X POST https://YOUR-FORWARDED-ADDRESS/v1/motion-artwork/jobs \
   -H "Authorization: Bearer PASTE_YOUR_KEY" \
@@ -176,12 +185,13 @@ times, a couple seconds apart, until `"status"` says `complete`:
 ```bash
 curl https://YOUR-FORWARDED-ADDRESS/v1/motion-artwork/jobs/PASTE_JOB_ID -H "Authorization: Bearer PASTE_YOUR_KEY"
 ```
-Once it's complete, the response includes a `"preview_url"` — because you
-used the forwarded address above, it's already a real, clickable
-`https://...app.github.dev` link. **Paste it into a new browser tab and the
-animated cover just plays, no download button anywhere.** That was the
-actual fix for your school-PC problem: the video was never something you
-needed to save to disk, only something you needed to *watch*.
+Once it's complete, the response includes a `"preview_url"` that's already
+a real, clickable `https://...app.github.dev` link (because you told the
+server that address up front with `PUBLIC_BASE_URL`, it doesn't have to
+guess). **Paste it into a new browser tab and the animated cover just
+plays, no download button anywhere.** That was the actual fix for your
+school-PC problem: the video was never something you needed to save to
+disk, only something you needed to *watch*.
 
 ---
 
