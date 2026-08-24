@@ -142,23 +142,34 @@ extension from the Extensions icon on the left sidebar if you want that.)
 
 First, find your Codespace's public address: click the **Ports** tab at the
 bottom, find port `9000` in the list (it'll appear once you start the
-server below), and copy the address shown — it looks like
-`https://something-9000.app.github.dev`. Right-click that same row and set
-**Port Visibility** to **Public**, so it works from a plain terminal command
-and not just a logged-in browser tab.
+server below), copy the address shown — it looks like
+`https://something-9000.app.github.dev` — and right-click that same row to
+set **Port Visibility** to **Public**, so it works from a plain terminal
+command and not just a logged-in browser tab.
 
-Now start the server, telling it that address so every link it hands back
-is already correct — no manual swapping, no guessing:
+Now tell the server that address, **once**, by putting it in a file — this
+is more reliable than typing it as part of the start command every time,
+which is easy to forget on a restart:
 ```bash
-PUBLIC_BASE_URL="https://YOUR-FORWARDED-ADDRESS" python3 devserver/app.py 9000
+echo 'PUBLIC_BASE_URL=https://YOUR-FORWARDED-ADDRESS' > .env
 ```
 (Replace `YOUR-FORWARDED-ADDRESS` with what you copied — keep the
-`https://`, drop any trailing slash.)
+`https://`, drop any trailing slash. You only ever need to do this once per
+Codespace, even across restarts — if the address ever changes, just run
+this line again with the new one.)
 
-Leave it running. A little popup will appear ("Your application running on
-port 9000 is available") — click **Open in Browser**. That opens a page
-confirming the server's up (if you land on a bare "404 not found" instead,
-you're on an older copy of the code — re-download the zip).
+Start the server:
+```bash
+python3 devserver/app.py 9000
+```
+Leave it running. Check the first couple of lines it prints — it should
+say `PUBLIC_BASE_URL is set: https://...`, confirming the `.env` file
+worked. (If it instead says `PUBLIC_BASE_URL is NOT set`, the `.env` step
+above didn't take — re-run the `echo` command and start the server again.)
+A little popup will also appear ("Your application running on port 9000 is
+available") — click **Open in Browser**. That opens a page confirming the
+server's up (if you land on a bare "404 not found" instead, you're on an
+older copy of the code — re-download the zip).
 
 Open a **second terminal** (click the `+` in the terminal panel) and make
 yourself a login key:

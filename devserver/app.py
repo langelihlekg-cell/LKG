@@ -29,6 +29,29 @@ sys.path.insert(0, os.path.join(ROOT, "generation"))
 sys.path.insert(0, os.path.join(ROOT, "qc"))
 sys.path.insert(0, ROOT)
 
+
+def _load_dotenv(path: str):
+    """Tiny hand-rolled .env loader (no extra package needed) — reads
+    KEY=VALUE lines and applies them if that key isn't already set in the
+    real environment. This exists because relying on someone retyping
+    PUBLIC_BASE_URL=... correctly, every single time they start the server,
+    proved fragile in practice — a real user lost the setting on a restart
+    simply by not including the prefix that one time. Set it once in a
+    file instead."""
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip('"').strip("'")
+            os.environ.setdefault(key, value)
+
+
+_load_dotenv(os.path.join(ROOT, ".env"))
+
 import requests
 from depth_estimator import ClassicalDepthEstimator
 from parallax_render import render_pair, DEMO_SQUARE, DEMO_VERTICAL, PRODUCTION_SQUARE, PRODUCTION_VERTICAL
@@ -52,7 +75,8 @@ os.makedirs(ASSETS_DIR, exist_ok=True)
 # on a plain server but NOT reliably behind Codespaces' port-forwarding
 # proxy, which was found (via a real user hitting it) to rewrite the host
 # info to "localhost" regardless of the actual forwarded address used. Set
-# this once and every returned URL uses it directly instead of guessing.
+# this once (via a .env file, loaded above) and every returned URL uses it
+# directly instead of guessing.
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 
 
@@ -405,7 +429,11 @@ if __name__ == "__main__":
     fresh = os.environ.get("MOTION_ARTWORK_FRESH_DB", "0") == "1"
     db.init_db(fresh=fresh)
     start_workers(n=2)
-    print(f"[devserver] full_res={USE_FULL_RES} dims={DIMS} listening on 127.0.0.1:{port} "
-          f"(asset URLs are built per-request now, not from this address; "
-          f"existing data preserved across restarts unless MOTION_ARTWORK_FRESH_DB=1)", flush=True)
+    print(f"[devserver] full_res={USE_FULL_RES} dims={DIMS} listening on 127.0.0.1:{port}", flush=True)
+    if PUBLIC_BASE_URL:
+        print(f"[devserver] PUBLIC_BASE_URL is set: {PUBLIC_BASE_URL} — returned links will use this", flush=True)
+    else:
+        print(f"[devserver] PUBLIC_BASE_URL is NOT set — returned links will guess from each request, "
+              f"which shows as 'localhost' behind Codespaces and won't open in your browser. "
+              f"Put PUBLIC_BASE_URL=https://your-forwarded-address in a .env file to fix this permanently.", flush=True)
     app.run(host="127.0.0.1", port=port, threaded=True)
