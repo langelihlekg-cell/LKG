@@ -19,12 +19,14 @@ import sys
 import shutil
 import subprocess
 import tempfile
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "generation"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "qc"))
 
 from depth_estimator import ClassicalDepthEstimator
-from parallax_render import render_pair, DEMO_SQUARE, DEMO_VERTICAL, PRODUCTION_SQUARE
+from parallax_render import (render_pair, render_frame, DEMO_SQUARE, DEMO_VERTICAL,
+                             PRODUCTION_SQUARE, MotionArtworkSettings)
 from qc_suite import run_qc_suite, CONFIG
 
 
@@ -67,6 +69,15 @@ def test_compliant_render_passes(tmp_dir):
     return assets, cover
 
 
+def test_static_fallback_frame_is_exact():
+    """The phase-zero frame must be usable as the unanimated cover fallback."""
+    source = np.arange(12 * 16 * 3, dtype=np.uint8).reshape(12, 16, 3)
+    depth = np.linspace(0, 1, 12 * 16, dtype=np.float32).reshape(12, 16)
+    frame = render_frame(source, depth, 0.0, 0.018, 0.06, MotionArtworkSettings())
+    assert np.array_equal(frame, source), "phase-zero frame changed the static cover"
+    print("  [PASS] phase-zero fallback frame is pixel-identical to the cover")
+
+
 def test_audio_defect_is_caught(tmp_dir, assets, cover):
     broken = os.path.join(tmp_dir, "broken_with_audio.mov")
     subprocess.run([
@@ -101,6 +112,7 @@ if __name__ == "__main__":
     tmp = tempfile.mkdtemp(prefix="motion_artwork_test_")
     try:
         print("Running pipeline tests...")
+        test_static_fallback_frame_is_exact()
         assets, cover = test_compliant_render_passes(tmp)
         test_audio_defect_is_caught(tmp, assets, cover)
         test_wrong_resolution_is_caught(assets, cover)

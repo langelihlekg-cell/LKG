@@ -64,9 +64,12 @@ from webhook_utils import sign_payload
 # --- config -----------------------------------------------------------
 USE_FULL_RES = os.environ.get("MOTION_ARTWORK_FULL_RES", "0") == "1"
 DIMS = (PRODUCTION_SQUARE, PRODUCTION_VERTICAL) if USE_FULL_RES else (DEMO_SQUARE, DEMO_VERTICAL)
-RENDER_DURATION_S = 12.0 if USE_FULL_RES else 3.0
-RENDER_FPS = 24 if USE_FULL_RES else 12
-RENDER_BITRATE_MBPS = 60.0 if USE_FULL_RES else 6.0
+# Full-resolution jobs follow the API's Apple Music motion-artwork profile.
+# Demo values stay deliberately small so the live contract demonstration can
+# finish quickly on a CPU-only machine.
+RENDER_DURATION_S = 15.0 if USE_FULL_RES else 3.0
+RENDER_FPS = 30 if USE_FULL_RES else 12
+RENDER_BITRATE_MBPS = 50.0 if USE_FULL_RES else 6.0
 
 ASSETS_DIR = os.path.join(HERE, "storage")
 os.makedirs(ASSETS_DIR, exist_ok=True)
