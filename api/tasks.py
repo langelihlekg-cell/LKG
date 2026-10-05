@@ -24,10 +24,9 @@ celery_app = Celery("motion_artwork", broker=REDIS_URL, backend=REDIS_URL)
 
 # Production defaults. duration/fps trade render time for smoothness —
 # tune per the cost model, not just for looks.
-DEFAULT_FPS = 24
+DEFAULT_FPS = 30
 DEFAULT_CODEC = "h264"
-DEFAULT_BITRATE_MBPS = 60  # mid-point of the 45-100 Mbps window; verify against
-                           # Apple's current published spec before locking this in
+DEFAULT_BITRATE_MBPS = 50
 
 
 def _download_to_tmp(url: str, dest_path: str) -> None:
@@ -57,7 +56,7 @@ def generate_job_task(self, job_id: str):
             out_dir = os.path.join(tmp, "out")
             assets = render_pair(
                 cover_path, out_dir, estimator,
-                duration_s=float(job.duration_seconds or 12.0),
+                duration_s=float(job.duration_seconds or 15.0),
                 fps=DEFAULT_FPS, codec=DEFAULT_CODEC, bitrate_mbps=DEFAULT_BITRATE_MBPS,
                 dims=(PRODUCTION_SQUARE, PRODUCTION_VERTICAL),
             )

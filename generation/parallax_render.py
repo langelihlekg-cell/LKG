@@ -19,6 +19,7 @@ import subprocess
 import shutil
 import numpy as np
 import cv2
+from dataclasses import dataclass
 
 # Real Apple deliverable dimensions (see the motion-artwork-api-spec.md contract)
 PRODUCTION_SQUARE = (3840, 3840)      # 1:1, iPad/Mac/TV
@@ -28,6 +29,23 @@ PRODUCTION_VERTICAL = (2048, 2732)    # 3:4, iPhone/Android full-bleed player
 # Same code path, just smaller — swap in PRODUCTION_* for real delivery.
 DEMO_SQUARE = (480, 480)
 DEMO_VERTICAL = (480, 640)
+
+
+@dataclass(frozen=True)
+class MotionArtworkSettings:
+    """Loop-safe controls for the three-plane motion-artwork treatment.
+
+    Every animated pass is multiplied by ``(1 - cos(phase)) / 2`` or a sine
+    term.  Consequently phase zero remains an untouched fallback frame while
+    phase 2π returns to the same position *and velocity*.
+    """
+    parallax_gain: float = 0.018
+    zoom_gain: float = 0.06
+    subject_float_gain: float = 0.006
+    hue_shift_degrees: float = 8.0
+    fog_opacity: float = 0.10
+    particle_opacity: float = 0.14
+    scrim_opacity: float = 0.22
 
 
 def compose_vertical_canvas(square_rgb: np.ndarray, target_w: int, target_h: int) -> np.ndarray:
@@ -64,14 +82,59 @@ def compose_vertical_canvas(square_rgb: np.ndarray, target_w: int, target_h: int
     return canvas
 
 
+def _apply_atmosphere(frame: np.ndarray, depth: np.ndarray, phase: float,
+                      settings: MotionArtworkSettings) -> np.ndarray:
+    """Composite background fog, subject rim light, foreground particles, and
+    a bottom UI scrim. All passes intentionally vanish at the fallback frame.
+    """
+    h, w = frame.shape[:2]
+    progress = (1.0 - np.cos(phase)) / 2.0
+    result = frame.astype(np.float32)
+    background = cv2.GaussianBlur((1.0 - depth).astype(np.float32), (0, 0), w * 0.015)
+    subject = cv2.GaussianBlur(depth.astype(np.float32), (0, 0), w * 0.004)
+
+    # Background: low-frequency fog and cyclic cool/warm color wash.
+    fog_x = int(w * 0.12 * np.sin(phase))
+    fog = np.roll(background, fog_x, axis=1)[:, :, None]
+    hue_strength = settings.hue_shift_degrees / 45.0
+    wash = np.array([0.25 + hue_strength * np.sin(phase), 0.12,
+                     0.35 - hue_strength * np.sin(phase)], dtype=np.float32) * 255
+    result += fog * wash * (settings.fog_opacity * progress)
+
+    # Subject: a restrained depth-matte rim light. The gradient makes this a
+    # contour rather than a flat brightening of the entire foreground.
+    rim = np.clip(subject - cv2.GaussianBlur(subject, (0, 0), w * 0.012), 0, 1)[:, :, None]
+    result += rim * np.array([255, 110, 55], dtype=np.float32) * (0.35 * progress)
+
+    # Foreground: deterministic orbital glow points, additive blended.
+    overlay = np.zeros_like(result)
+    center = (int(w * (0.5 + 0.16 * np.cos(phase))), int(h * (0.45 + 0.10 * np.sin(phase))))
+    cv2.circle(overlay, center, max(2, int(min(w, h) * 0.008)), (65, 180, 255), -1, cv2.LINE_AA)
+    overlay = cv2.GaussianBlur(overlay, (0, 0), max(1.0, min(w, h) * 0.012))
+    result += overlay * (settings.particle_opacity * progress)
+
+    # A transparent bottom gradient keeps player chrome readable without
+    # changing the exact static fallback at phase zero.
+    gradient = np.linspace(0, 1, h, dtype=np.float32)[:, None]
+    gradient = np.clip((gradient - 0.62) / 0.38, 0, 1)[:, :, None]
+    result *= 1.0 - gradient * (settings.scrim_opacity * progress)
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+
 def render_frame(source_rgb: np.ndarray, depth: np.ndarray, phase: float,
-                  parallax_gain: float, zoom_gain: float) -> np.ndarray:
-    """One frame at a given phase (radians, 0..2*pi). phase=0 -> identity."""
+                 parallax_gain: float, zoom_gain: float,
+                 settings: MotionArtworkSettings | None = None) -> np.ndarray:
+    """One three-plane frame at ``phase``. At phase 0 it is byte-identical to
+    ``source_rgb``, allowing it to be used as the static-cover fallback."""
+    settings = settings or MotionArtworkSettings(parallax_gain=parallax_gain, zoom_gain=zoom_gain)
+    parallax_gain, zoom_gain = settings.parallax_gain, settings.zoom_gain
     h, w = source_rgb.shape[:2]
     cy, cx = h / 2.0, w / 2.0
 
     offset_x = parallax_gain * w * np.sin(phase)
-    offset_y = parallax_gain * h * 0.35 * np.sin(phase + np.pi / 2)  # gentle secondary drift
+    # A sine-only path is crucial: an earlier cosine secondary drift moved
+    # frame zero and violated the static-cover fallback requirement.
+    offset_y = parallax_gain * h * 0.35 * np.sin(phase)
     zoom = 1.0 + zoom_gain * (1 - np.cos(phase)) / 2.0  # 1.0 at phase=0
 
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
@@ -81,18 +144,25 @@ def render_frame(source_rgb: np.ndarray, depth: np.ndarray, phase: float,
     # depth-weighted parallax: closer (depth->1) moves more than far (depth->0)
     map_x = map_x + offset_x * depth
     map_y = map_y + offset_y * depth
+    # The tighter depth mask adds an independent harmonic hover to the subject
+    # plane without moving the atmospheric background by the same amount.
+    map_y = map_y + settings.subject_float_gain * h * np.sin(phase) * depth ** 2
 
-    return cv2.remap(
+    warped = cv2.remap(
         source_rgb, map_x.astype(np.float32), map_y.astype(np.float32),
         interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT101,
     )
+    if phase == 0:
+        return source_rgb.copy()
+    return _apply_atmosphere(warped, depth, phase, settings)
 
 
 def render_frame_sequence(source_rgb: np.ndarray, depth: np.ndarray, n_frames: int,
-                           parallax_gain: float = 0.018, zoom_gain: float = 0.045):
+                           parallax_gain: float = 0.018, zoom_gain: float = 0.06,
+                           settings: MotionArtworkSettings | None = None):
     for i in range(n_frames):
         phase = 2 * np.pi * i / n_frames
-        yield render_frame(source_rgb, depth, phase, parallax_gain, zoom_gain)
+        yield render_frame(source_rgb, depth, phase, parallax_gain, zoom_gain, settings)
 
 
 def encode_frames_to_video(frame_paths_dir: str, fps: int, n_frames: int, out_path: str,
@@ -136,7 +206,8 @@ def encode_frames_to_video(frame_paths_dir: str, fps: int, n_frames: int, out_pa
 
 def render_deliverable(source_rgb: np.ndarray, depth_estimator, target_w: int, target_h: int,
                         duration_s: float, fps: int, out_path: str, codec: str,
-                        bitrate_mbps: float, is_vertical: bool, tmp_dir: str) -> str:
+                        bitrate_mbps: float, is_vertical: bool, tmp_dir: str,
+                        settings: MotionArtworkSettings | None = None) -> str:
     if is_vertical:
         canvas = compose_vertical_canvas(source_rgb, target_w, target_h)
     else:
@@ -147,7 +218,7 @@ def render_deliverable(source_rgb: np.ndarray, depth_estimator, target_w: int, t
 
     frame_dir = os.path.join(tmp_dir, "frames_" + ("v" if is_vertical else "s"))
     os.makedirs(frame_dir, exist_ok=True)
-    for i, frame in enumerate(render_frame_sequence(canvas, depth, n_frames)):
+    for i, frame in enumerate(render_frame_sequence(canvas, depth, n_frames, settings=settings)):
         cv2.imwrite(os.path.join(frame_dir, f"{i:06d}.png"),
                     cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -157,8 +228,9 @@ def render_deliverable(source_rgb: np.ndarray, depth_estimator, target_w: int, t
 
 
 def render_pair(source_image_path: str, out_dir: str, depth_estimator,
-                 duration_s: float = 12.0, fps: int = 24, codec: str = "h264",
-                 bitrate_mbps: float = 8.0, dims=(PRODUCTION_SQUARE, PRODUCTION_VERTICAL)) -> dict:
+                 duration_s: float = 15.0, fps: int = 30, codec: str = "h264",
+                 bitrate_mbps: float = 50.0, dims=(PRODUCTION_SQUARE, PRODUCTION_VERTICAL),
+                 settings: MotionArtworkSettings | None = None) -> dict:
     """Renders BOTH deliverables from the same source, guaranteeing identical
     duration/fps (Apple requires the two files to match exactly)."""
     os.makedirs(out_dir, exist_ok=True)
@@ -177,9 +249,11 @@ def render_pair(source_image_path: str, out_dir: str, depth_estimator,
     vertical_path = os.path.join(out_dir, f"vertical_3x4.{ext}")
 
     render_deliverable(src, depth_estimator, *square_dims, duration_s, fps,
-                        square_path, codec, bitrate_mbps, is_vertical=False, tmp_dir=tmp_dir)
+                        square_path, codec, bitrate_mbps, is_vertical=False, tmp_dir=tmp_dir,
+                        settings=settings)
     render_deliverable(src, depth_estimator, *vertical_dims, duration_s, fps,
-                        vertical_path, codec, bitrate_mbps, is_vertical=True, tmp_dir=tmp_dir)
+                        vertical_path, codec, bitrate_mbps, is_vertical=True, tmp_dir=tmp_dir,
+                        settings=settings)
 
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return {"square_1x1": square_path, "vertical_3x4": vertical_path}

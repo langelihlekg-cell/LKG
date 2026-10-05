@@ -5,7 +5,7 @@ cover and outputs a seamless looping video.
 
 Usage:
     python3 week1_prototype.py --input cover.png --output out_dir \
-        --duration 12 --fps 24 --codec h264 --real-depth
+        --duration 15 --fps 30 --codec h264 --real-depth
 
 --real-depth requires `pip install torch transformers` and a model download
 (needs network — not available in this sandbox, so it defaults to the
@@ -24,8 +24,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--input", required=True, help="path to static square cover (PNG/JPG)")
     p.add_argument("--output", required=True, help="output directory")
-    p.add_argument("--duration", type=float, default=12.0)
-    p.add_argument("--fps", type=int, default=24)
+    p.add_argument("--duration", type=float, default=15.0)
+    p.add_argument("--fps", type=int, default=30)
     p.add_argument("--codec", choices=["h264", "prores"], default="h264")
     p.add_argument("--bitrate-mbps", type=float, default=60.0)
     p.add_argument("--real-depth", action="store_true",

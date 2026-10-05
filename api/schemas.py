@@ -7,7 +7,7 @@ class JobCreateRequest(BaseModel):
     artist_id: Optional[str] = None
     cover_art_url: HttpUrl
     tier: Literal["parametric", "stylized", "cinematic"] = "parametric"
-    duration_seconds: float = Field(12.0, ge=8.0, le=35.0)
+    duration_seconds: float = Field(15.0, ge=8.0, le=35.0)
     style_preset: str = "subtle_parallax"
     callback_url: HttpUrl
     metadata: dict = Field(default_factory=dict)
